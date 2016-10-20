@@ -156,7 +156,7 @@ public class Principal extends javax.swing.JFrame {
             try {
                 CSVwriter.write(String.format("%s;%s;%s;%s;%s;%s\n", a.mac, a.entrada.plus(2, ChronoUnit.HOURS).toString(), a.punto1.plus(2, ChronoUnit.HOURS).toString(), a.punto2.plus(2, ChronoUnit.HOURS).toString(), a.punto3.plus(2, ChronoUnit.HOURS).toString(), a.salida.plus(2, ChronoUnit.HOURS).toString()));
             } catch (IOException ex) {
-                Logger.getLogger(ProcesadorRegistros.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
         CSVwriter.close();
