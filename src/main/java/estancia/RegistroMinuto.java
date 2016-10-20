@@ -8,6 +8,7 @@ package estancia;
 import calibracion.Calibracion;
 import java.util.ArrayList;
 import java.time.Instant;
+import java.time.ZoneId;
 
 public class RegistroMinuto {
     public double a,b,c;
@@ -39,4 +40,74 @@ public class RegistroMinuto {
             }
         });
     }
+
+    public double getA() {
+        return a;
+    }
+
+    public void setA(double a) {
+        this.a = a;
+    }
+
+    public double getB() {
+        return b;
+    }
+
+    public void setB(double b) {
+        this.b = b;
+    }
+
+    public double getC() {
+        return c;
+    }
+
+    public void setC(double c) {
+        this.c = c;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public String getPunto() {
+        return punto;
+    }
+
+    public void setPunto(String punto) {
+        this.punto = punto;
+    }
+
+    public String getArea() {
+        return area;
+    }
+
+    public void setArea(String area) {
+        this.area = area;
+    }
+
+    public String getMac() {
+        return mac;
+    }
+
+    public void setMac(String mac) {
+        this.mac = mac;
+    }
+
+    public double getMinimo() {
+        return minimo;
+    }
+
+    public void setMinimo(double minimo) {
+        this.minimo = minimo;
+    }
+
+    public Object getHoraTexto() {
+        return timestamp.atZone(ZoneId.systemDefault()).getHour()+":"+timestamp.atZone(ZoneId.systemDefault()).getMinute();
+    }
+    
+    
 }

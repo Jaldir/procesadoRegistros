@@ -8,6 +8,7 @@ package estancia;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.time.Instant;
+import java.time.ZoneId;
 
 /**
  *
@@ -41,5 +42,12 @@ public class SubEstancia {
             fin = registro.timestamp;
             duracion = Duration.between(inicio, fin).toMinutes();
         }
+    }
+    
+    public Object getHoraInicio() {
+        return inicio.atZone(ZoneId.systemDefault()).getHour()+":"+inicio.atZone(ZoneId.systemDefault()).getMinute();
+    }
+    public Object getHoraFin() {
+        return fin.atZone(ZoneId.systemDefault()).getHour()+":"+fin.atZone(ZoneId.systemDefault()).getMinute();
     }
 }

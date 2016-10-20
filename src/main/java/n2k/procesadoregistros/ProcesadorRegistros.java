@@ -39,6 +39,7 @@ public class ProcesadorRegistros {
     public static final int MAX_ESTANCIA = 120;
     public static final int MAX_DIFF_REGISTROS = 120;
     
+    
     public static void main(String[] args) throws IOException, ParseException {
         Path pathCalibracion = Paths.get("calibracion.csv");
         Path pathLecturas = Paths.get("lecturas.csv");
@@ -145,15 +146,28 @@ public class ProcesadorRegistros {
         estancias.forEach(e -> e.generarSubestancias());
         //estancias.forEach(a-> System.out.println(String.format("%s,%s,%s,%s,%s,%s", a.mac, a.entrada.toString(), a.punto1.toString(), a.punto2.toString(), a.punto3.toString(), a.salida.toString())));
 
-        FileWriter writer = new FileWriter("output.csv"); 
+        FileWriter CSVwriter = new FileWriter("output.csv"); 
         estancias.forEach(a-> {
             try {
-                writer.write(String.format("%s;%s;%s;%s;%s;%s\n", a.mac, a.entrada.plus(2, ChronoUnit.HOURS).toString(), a.punto1.plus(2, ChronoUnit.HOURS).toString(), a.punto2.plus(2, ChronoUnit.HOURS).toString(), a.punto3.plus(2, ChronoUnit.HOURS).toString(), a.salida.plus(2, ChronoUnit.HOURS).toString()));
+                CSVwriter.write(String.format("%s;%s;%s;%s;%s;%s\n", a.mac, a.entrada.plus(2, ChronoUnit.HOURS).toString(), a.punto1.plus(2, ChronoUnit.HOURS).toString(), a.punto2.plus(2, ChronoUnit.HOURS).toString(), a.punto3.plus(2, ChronoUnit.HOURS).toString(), a.salida.plus(2, ChronoUnit.HOURS).toString()));
             } catch (IOException ex) {
                 Logger.getLogger(ProcesadorRegistros.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
-        writer.close();
+        CSVwriter.close();
+        
+        Map<Integer, Long> horasEntrada = estancias.stream().collect(
+                    Collectors.groupingBy(Estancia::getHoraEntrada, Collectors.counting()));
+        Map<Integer, Long> horasSalida = estancias.stream().collect(
+                    Collectors.groupingBy(Estancia::getHoraSalida, Collectors.counting()));
+        
+        FileWriter JSwriter = new FileWriter("output.js");
+        JSwriter.write("var datos = [");
+        for (int i = 0; i < 23; i++) {
+            JSwriter.write(String.format("[%d,%d,%d],",i,horasEntrada.get(i), horasSalida.get(i)));
+        }
+        JSwriter.write("];");
+        JSwriter.close();
         /*
         int u = 123;
         System.out.println(estancias.get(u).mac);

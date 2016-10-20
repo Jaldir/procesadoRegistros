@@ -7,12 +7,17 @@ package estancia;
 
 import java.util.ArrayList;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.temporal.ChronoField;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Estancia {
     public Instant entrada, salida;
     public Instant punto1, punto2, punto3;
-    public String mac;
+    public String mac, punto;
     public ArrayList<SubEstancia> subestancias;
     public ArrayList<RegistroMinuto> registros;
     public final int MAX_DIFERENTES = 2;
@@ -27,10 +32,22 @@ public class Estancia {
     
     public void addRegistro(RegistroMinuto registro){
         registros.add(registro);
-        salida = registro.timestamp;
+        salida = registro.timestamp.isAfter(salida)?registro.timestamp:salida;
+    }
+    
+    public int getHoraEntrada(){
+        return entrada.atZone(ZoneId.systemDefault()).getHour();
+    }
+    public int getHoraSalida(){
+        return salida.atZone(ZoneId.systemDefault()).getHour();
+    }
+    
+    public String getHoraTexto(){
+        return salida.atZone(ZoneId.systemDefault()).getHour()+":"+salida.atZone(ZoneId.systemDefault()).getMinute();
     }
     
     public void generarSubestancias(){
+        asignarPunto();
         subestancias = new ArrayList<>();
         registros.sort((l1, l2) -> l1.timestamp.compareTo(l2.timestamp));
         
@@ -79,7 +96,6 @@ public class Estancia {
             while (bufferiterator.hasNext()){
                 subestancia.addRegistro(bufferiterator.next());
             }
-            continuar = 0;
         }
         
         while(subestancias.size()<4){
@@ -93,5 +109,16 @@ public class Estancia {
         punto1 = subestancias.get(0).fin;
         punto2 = subestancias.get(1).fin;
         punto3 = subestancias.get(2).fin;
+        //registros = new ArrayList();
     }
+     private void asignarPunto(){
+         punto = registros.stream()
+                .collect(Collectors.groupingBy(RegistroMinuto::getPunto, Collectors.counting()))
+                .entrySet().stream().max((o1, o2) -> o1.getValue().compareTo(o2.getValue()))
+                .map(Map.Entry::getKey).orElse(null);
+     }
+     
+     public String toString(){
+         return mac + " ["+this.punto+"]";
+     }
 }
