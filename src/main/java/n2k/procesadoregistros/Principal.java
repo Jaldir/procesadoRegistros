@@ -12,6 +12,7 @@ import estancia.Lectura;
 import estancia.RegistroMinuto;
 import java.awt.event.ItemEvent;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +32,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.JFileChooser;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -48,9 +50,8 @@ public class Principal extends javax.swing.JFrame {
         Calibracion calibracion;
         
         String separador = ",";
-    
-    public Principal() throws IOException, ParseException {
-
+        
+    private void calibrar(){
         /* 
         Añado el modelo de datos de un fichero CSV
         */
@@ -62,8 +63,12 @@ public class Principal extends javax.swing.JFrame {
                 PuntoCalibrado punto = new PuntoCalibrado (lineaTokenizada[0],Double.parseDouble(lineaTokenizada[1]),Double.parseDouble(lineaTokenizada[2]),Double.parseDouble(lineaTokenizada[3]));
                 calibracion.puntos.add(punto);
             }
-        }
-        
+        }   catch (IOException ex) {
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+            }
+    }
+    
+    private void leerLecturas(){
         /* 
         Añado las lecturas de otro CSV 
         */
@@ -75,7 +80,11 @@ public class Principal extends javax.swing.JFrame {
                 String[] lineaTokenizada = linea.split(separador);
                 lecturas.add(new Lectura(Double.parseDouble(lineaTokenizada[3]),lineaTokenizada[2],lineaTokenizada[0],sdf.parse(lineaTokenizada[1]).toInstant().truncatedTo(ChronoUnit.MINUTES)));
             }
-        }
+        }   catch (IOException ex) {
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ParseException ex) {
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+            }
         
         /* 
         Ordeno las lecturas 
@@ -84,15 +93,11 @@ public class Principal extends javax.swing.JFrame {
         comparadorLecturas = comparadorLecturas.thenComparing((l1, l2) -> l1.timestamp.compareTo(l2.timestamp));
         comparadorLecturas = comparadorLecturas.thenComparing((l1, l2) -> l1.sensor.compareTo(l2.sensor));
         lecturas.sort(comparadorLecturas);
-        //lecturas.forEach(e -> System.out.println(String.format("%s,%f,%s,%s", e.mac, e.intensidad, e.sensor, e.timestamp.toString())));
-        
-        
-        /* 
-        Paso de lecturas a registros por minuto
-        */
+    }
+    
+    private void generarRegistros(){
         registros = new ArrayList<>();
         ArrayList<Lectura> lecturasMinuto = new ArrayList<>();
-        int s = 0;
         Iterator lista = lecturas.iterator();
         Lectura lecturaAnterior = (Lectura) lista.next();
         lecturasMinuto.add(lecturaAnterior);
@@ -119,7 +124,6 @@ public class Principal extends javax.swing.JFrame {
         /* 
         Triangulo los registros
         */
-        //calibracion.puntos.forEach(e -> System.out.println(String.format("%s: %f, %f, %f", e.nombre, e.a, e.b, e.c)));
         registros.forEach(e -> e.asignarPunto(calibracion));
         lecturas = null;
         
@@ -129,8 +133,9 @@ public class Principal extends javax.swing.JFrame {
         Comparator<RegistroMinuto> comparadorRegistros = (l1, l2) -> l1.mac.compareTo(l2.mac);
         comparadorRegistros = comparadorRegistros.thenComparing((l1, l2) -> l1.timestamp.compareTo(l2.timestamp));
         registros.sort(comparadorRegistros);
-        //registros.forEach(a -> System.out.println(String.format("%s [%s] %s: %f, %f, %f [%s]", a.mac, a.punto, a.area, a.a, a.b, a.c, a.timestamp.toString())));
-        
+    }
+    
+    private void generarEstancias(){
         /* 
         Creo estancias
         */
@@ -150,7 +155,9 @@ public class Principal extends javax.swing.JFrame {
         }
         
         estancias.forEach(e -> e.generarSubestancias());
-        
+    }
+    
+    private void escribirCSV() throws IOException{
         FileWriter CSVwriter = new FileWriter(outputCSV); 
         estancias.forEach(a-> {
             try {
@@ -160,7 +167,9 @@ public class Principal extends javax.swing.JFrame {
             }
         });
         CSVwriter.close();
-        
+    }
+    
+    private void escribirJS() throws IOException{
         Map<Integer, Long> horasEntrada = estancias.stream().collect(
                     Collectors.groupingBy(Estancia::getHoraEntrada, Collectors.counting()));
         Map<Integer, Long> horasSalida = estancias.stream().collect(
@@ -173,10 +182,18 @@ public class Principal extends javax.swing.JFrame {
         }
         JSwriter.write("];");
         JSwriter.close();
-
+    }
+    
+    public Principal() throws IOException, ParseException {
         initComponents();
-        selectorEstancia.setModel(new DefaultComboBoxModel(estancias.toArray()));
+        calibrar();
+        leerLecturas();
+        generarRegistros();
+        generarEstancias();
+        escribirCSV();
+        escribirJS();
         
+        selectorEstancia.setModel(new DefaultComboBoxModel(estancias.toArray()));
     }
 
     /**
@@ -201,14 +218,21 @@ public class Principal extends javax.swing.JFrame {
         jScrollPane2 = new javax.swing.JScrollPane();
         tablaSubEstancias = new javax.swing.JTable();
         jMenuBar1 = new javax.swing.JMenuBar();
-        jMenu1 = new javax.swing.JMenu();
+        menuFicheros = new javax.swing.JMenu();
+        botonCalibrar = new javax.swing.JMenuItem();
+        botonLeer = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
+        botonProcesar = new javax.swing.JMenuItem();
+        botonGenerarCSV = new javax.swing.JMenuItem();
+        botonGenerarJSON = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Procesador de Registros");
         setMinimumSize(new java.awt.Dimension(700, 700));
 
         selectorEstancia.setModel(new javax.swing.DefaultComboBoxModel<>());
+        selectorEstancia.setToolTipText("");
+        selectorEstancia.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         selectorEstancia.addItemListener(new java.awt.event.ItemListener() {
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
                 selectorEstanciaItemStateChanged(evt);
@@ -225,7 +249,7 @@ public class Principal extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(selectorEstancia, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(selectorEstancia, 0, 213, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
@@ -324,10 +348,52 @@ public class Principal extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
-        jMenu1.setText("File");
-        jMenuBar1.add(jMenu1);
+        menuFicheros.setText("Ficheros");
 
-        jMenu2.setText("Edit");
+        botonCalibrar.setText("Seleccionar calibración");
+        botonCalibrar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botonCalibrarActionPerformed(evt);
+            }
+        });
+        menuFicheros.add(botonCalibrar);
+
+        botonLeer.setText("Seleccionar lecturas");
+        botonLeer.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botonLeerActionPerformed(evt);
+            }
+        });
+        menuFicheros.add(botonLeer);
+
+        jMenuBar1.add(menuFicheros);
+
+        jMenu2.setText("Acciones");
+
+        botonProcesar.setText("Procesar");
+        botonProcesar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botonProcesarActionPerformed(evt);
+            }
+        });
+        jMenu2.add(botonProcesar);
+
+        botonGenerarCSV.setText("Generar CSV");
+        botonGenerarCSV.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botonGenerarCSVActionPerformed(evt);
+            }
+        });
+        jMenu2.add(botonGenerarCSV);
+
+        botonGenerarJSON.setText("Generar JSON");
+        botonGenerarJSON.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botonGenerarJSONActionPerformed(evt);
+            }
+        });
+        jMenu2.add(botonGenerarJSON);
+
         jMenuBar1.add(jMenu2);
 
         setJMenuBar(jMenuBar1);
@@ -337,12 +403,12 @@ public class Principal extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addComponent(panelTablas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 9, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(418, Short.MAX_VALUE))
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(panelTablas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -368,6 +434,50 @@ public class Principal extends javax.swing.JFrame {
         item.subestancias.forEach(e -> tm.addRow(new Object [] {e.area,e.getHoraInicio(),e.getHoraFin(),e.duracion}));
        }
     }//GEN-LAST:event_selectorEstanciaItemStateChanged
+
+    private void botonCalibrarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonCalibrarActionPerformed
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+        int result = fileChooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            pathCalibracion = Paths.get(selectedFile.getAbsolutePath());
+        }
+        calibrar();
+    }//GEN-LAST:event_botonCalibrarActionPerformed
+
+    private void botonLeerActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonLeerActionPerformed
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+        int result = fileChooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            pathLecturas = Paths.get(selectedFile.getAbsolutePath());
+        }
+        leerLecturas();
+    }//GEN-LAST:event_botonLeerActionPerformed
+
+    private void botonProcesarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonProcesarActionPerformed
+        generarRegistros();
+        generarEstancias();
+        selectorEstancia.setModel(new DefaultComboBoxModel(estancias.toArray()));
+    }//GEN-LAST:event_botonProcesarActionPerformed
+
+    private void botonGenerarCSVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonGenerarCSVActionPerformed
+            try {
+                escribirCSV();
+            } catch (IOException ex) {
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+            }
+    }//GEN-LAST:event_botonGenerarCSVActionPerformed
+
+    private void botonGenerarJSONActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonGenerarJSONActionPerformed
+            try {
+                escribirJS();
+            } catch (IOException ex) {
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+            }
+    }//GEN-LAST:event_botonGenerarJSONActionPerformed
     
     public static final int MIN_ESTANCIA = 5;
     public static final int MAX_ESTANCIA = 120;
@@ -413,15 +523,17 @@ public class Principal extends javax.swing.JFrame {
                 }
             }
         });
-
-        
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JMenuItem botonCalibrar;
+    private javax.swing.JMenuItem botonGenerarCSV;
+    private javax.swing.JMenuItem botonGenerarJSON;
+    private javax.swing.JMenuItem botonLeer;
+    private javax.swing.JMenuItem botonProcesar;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
-    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JPanel jPanel1;
@@ -429,6 +541,7 @@ public class Principal extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JMenu menuFicheros;
     private javax.swing.JPanel panelTablas;
     public javax.swing.JComboBox<String> selectorEstancia;
     private javax.swing.JTable tablaRegistros;
